@@ -1,0 +1,1310 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="styles.css"/>
+</head>
+<body>
+	<!-- Google Analytics -->
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	  ga('create', 'UA-76182888-1', 'auto');
+	  ga('send', 'pageview');
+	</script>
+	<!-- Google Tag Manager -->
+	<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-T936KB"
+	height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+	<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+	new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+	j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+	'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+	})(window,document,'script','dataLayer','GTM-T936KB');</script>
+	<!-- End Google Tag Manager -->
+	<div id="popup-container" class="ontop">
+		<div id="popup">
+			<div id="help-caption">
+				HELP
+			</div>
+			<div id="about">
+				GPilot.JS is a hybrid of <a target="_blank" href="http://www.classicgamesarcade.com/games/galaga.swf">Galaga</a> and <a target="_blank" href="http://www.xpilot.org/">XPilot</a>
+				<br>
+				© 2016 coffee.then(js)
+				www.softwaremeisterei.at
+			</div>
+			<div id="help"></div>
+			<div id="close-help">
+				<a href="#" onclick="hide('popup-container')">CLOSE</a>
+			</div>
+		</div>
+	</div>
+	<div>
+		<section>
+			<div class="col">
+				<div class="form">
+					Your name: <input id="name" type="text" placeholder="e.g. Darth" maxlength="20"/>
+					<button id="join">Join</button>
+					<span id="logo">GPilot.JS 0.3.0</span>
+				</div>
+				<canvas id="canvas" width="1024" height="768"></canvas>
+				<div class="form">
+					Message	to <select id="users"><option value="">all</option></select>
+					<input type="text" id="message" disabled="disabled"/>
+					| Score: <span id="score">0</span>
+					| Lifes: <span id="lifes">0</span>
+					<span id="help-button"><img src="/img/help_icon.png" title="Help"/></span>
+				</div>
+			</div>
+			<div class="col hide-on-fullscreen">
+				<div id="settings">
+					SETTINGS<br><br>
+					<table>
+						<tr><td>World Size</td>
+							<td>
+								<select id="selectWorldSize">
+									<option value="fhd">FHD</option>
+									<option value="sxga">SXGA</option>
+									<option value="xga" selected>XGA</option>
+									<option value="svga">SVGA</option>
+									<option value="vga">VGA</option>
+									<option value="cga">CGA</option>
+								</select>
+							</td>
+						</tr>
+						<tr><td>Level</td>
+							<td>
+								<select id="selectLevel">
+									<option value="1">1</option>
+									<option value="2">2</option>
+									<option value="3">3</option>
+									<option value="4">4</option>
+									<option value="5">5</option>
+								</select>
+							</td>
+						</tr>
+						<tr><td>[F]ull Screen</td><td><input id="checkFullscreen" type="checkbox"/></td></tr>
+						<tr><td>Sound</td><td><input id="checkSound" type="checkbox"/></td></tr>
+					</table>
+				</div>
+				<div>
+					NEWS
+					<ul id="logbook">
+					</ul>
+				</div>
+				<div id="hiscores-container">
+					HISCORES<br><br>
+					<table><tbody id="hiscores"></tbody></table>
+				</div>
+				<div id="debug">
+					DEBUG
+				</div>
+			</div>
+        </section>
+	</div>
+<script src="/js/ocanvas-2.8.3.min.js"></script>
+<script src="/js/popup.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/optimath.js"></script>
+<script src="/js/linq.min.js"></script>
+<script>
+	window.onload = function () {
+		var app = (function () {
+			var optiMath = new OptiMath(),
+			audioTheme = new Audio('audio/Galaga_Theme.mp3'),
+			audioLevelStart = new Audio('audio/Galaga_Level_Start.mp3'),
+			audioFlyingEnemy = new Audio('audio/Galaga_Flying_Enemy.mp3'),
+			audioFiring = new Audio('audio/Galaga_Firing.mp3'),
+			audioKillEnemy = new Audio('audio/Galaga_Kill_Enemy.mp3'),
+			random = function () {
+				return Math.random()
+			},
+			fullscreen = false,
+			numberOfAnimationsPerSecond = 20,
+			handleKeyBoardInterval = 25,
+			garbageCollectionInterval = 100,
+			handleWeaponHitsInterval = 100,
+			botAnimationInterval = 200,
+			botBehaviour = {
+				harmless : {
+					firingRate : .05
+				},
+				friendly : {
+					firingRate : .05
+				},
+				moderate : {
+					firingRate : .33
+				},
+				dangerous : {
+					firingRate : .66
+				},
+				wicked : {
+					firingRate : .99
+				}
+			},
+			numberOfBotTypes = 3,
+			numberOfBots = 3,
+			numberOfBoostParticles = 1 + 3 * random() << 0,
+			engineThrust = 12,
+			fuelLifetime = function () {
+				return 10 + 10 * random() << 0
+			},
+			fuelRadius = 2
+				fuelStroke = function () {
+				return random() < .5 ? '1px #cc0' : '1px #0cc'
+			},
+			shotLifetime = 150,
+			shotRadius = 1,
+			shotStroke = '1px #fff'
+				mineRadius = 4,
+			mineStroke = '6px #00f',
+			heatSeekerLifetime = 300,
+			heatSeekerSpeed = 30,
+			shotSpeed = 400,
+			thrownMineSpeed = 70,
+			mineIgnitionDelay = 25,
+			numberOfMineShrapnels = 20,
+			maxShrapnelSpeed = 6000,
+			shrapnelRadius = 1,
+			shrapnelStroke = function () {
+				return [1, 2, 3][3 * random() << 0] + 'px #' + ['ffe', 'eff', 'fef'][3 * random() << 0]
+			},
+			shieldRadius = 32,
+			shieldStroke = '1px #aaf',
+			shieldOffTimeout = 800,
+			numberOfExplosionDebris = 20,
+			debrisLifetime = function () {
+				return 10 + 60 * random() << 0
+			},
+			debrisRadius = function () {
+				return random() * 4
+			},
+			debrisStroke = function () {
+				return (random() * 3 << 0) + 1 + 'px #' + randomColors[randomColors.length * random() << 0]
+			},
+			maxDebrisSpeed = 5000,
+			nibbles = '0123456789abcdef'.split(''),
+			randomNibble = function () {
+				return nibbles[nibbles.length * random() << 0]
+			},
+			randomColors = new Array(50).fill(0).map(function () {
+					return randomNibble() + randomNibble() + randomNibble()
+				}),
+			vesselColorClass = function (vessel) {
+				return isMe(vessel) ? 'ship' : 'bot'
+			},
+			bonusDisplayLifetime = 30,
+			shipName = 'Galaga',
+			initialLifes = 3,
+			bonusLifePoints = 1500,
+			nextLifeTimeout = 2000,
+			gameOverTimeout = 7000;
+
+			var selectWorldSize = document.getElementById('selectWorldSize');
+			var checkFullscreen = document.getElementById('checkFullscreen');
+			var checkSound = document.getElementById('checkSound');
+			var selectLevel = document.getElementById('selectLevel');
+			var hiscoresTable = document.getElementById('hiscores');
+			var name = document.getElementById('name');
+			var join = document.getElementById('join');
+			var logbook = document.getElementById('logbook');
+			var helpButton = document.getElementById('help-button');
+			var helpContent = document.getElementById('help');
+			var score = document.getElementById('score');
+			var lifes = document.getElementById('lifes');
+			var debug = document.getElementById('debug');
+
+			var hiscores = new Array(10);
+			var canvasWidth = parseInt(document.getElementById('canvas').getAttribute('width'));
+			var canvasHeight = parseInt(document.getElementById('canvas').getAttribute('height'));
+
+			var keyMap = [{
+					keyCode : 65,
+					keyDesc : 'A',
+					action : function () {
+						ship.rotate -= rotationStep
+					},
+					comment : 'Turn Left'
+				}, {
+					keyCode : 83,
+					keyDesc : 'S',
+					action : function () {
+						ship.rotate += rotationStep
+					},
+					comment : 'Turn Right'
+				}, {
+					keyCode : 16,
+					keyDesc : 'Shift',
+					action : function () {
+						ship.engine.boost()
+					},
+					comment : 'Thrust'
+				}, {
+					keyCode : 13,
+					keyDesc : 'Enter',
+					action : function () {
+						fireShot(ship)
+					},
+					comment : 'Fire Shot'
+				}, {
+					keyCode : 191,
+					keyDesc : '#',
+					action : function () {
+						placeMine(ship)
+					},
+					comment : 'Place Mine',
+					noKeyUp : true
+				}, {
+					keyCode : 187,
+					keyDesc : '+',
+					action : function () {
+						throwMine(ship)
+					},
+					comment : 'Throw Mine',
+					noKeyUp : true
+				}, {
+					keyCode : 37,
+					keyDesc : 'Left Arrow',
+					action : function () {
+						lockPrevious()
+					},
+					comment : 'Lock Previous',
+					noKeyUp : true
+				}, {
+					keyCode : 39,
+					keyDesc : 'Right Arrow',
+					action : function () {
+						lockNext()
+					},
+					comment : 'Lock Next',
+					noKeyUp : true
+				}, {
+					keyCode : 40,
+					keyDesc : 'Up Arrow',
+					action : function () {
+						lockClosest()
+					},
+					comment : 'Lock Closest',
+					noKeyUp : true
+				}, {
+					keyCode : 38,
+					keyDesc : 'Down Arrow',
+					action : function () {
+						lockNextClosest()
+					},
+					comment : 'Lock Next Closest',
+					noKeyUp : true
+				}, {
+					keyCode : 192,
+					keyDesc : 'ö',
+					action : function () {
+						fireHeatSeeker(ship)
+					},
+					comment : 'Fire Heat Seeker',
+					noKeyUp : true
+				}, {
+					keyCode : 37,
+					keyDesc : 'Caps Lock',
+					action : function () {
+						shieldOn(ship, true)
+					},
+					comment : 'Permanent Shield'
+				}, {
+					keyCode : 32,
+					keyDesc : 'Space',
+					action : function () {
+						shieldOn(ship, false)
+					},
+					comment : 'Shield'
+				}, {
+					keyCode : 72,
+					keyDesc : 'H',
+					action : function () {
+						ship.autopilot = !ship.autopilot
+					},
+					comment : 'AutoPilot',
+					noKeyUp : true
+				}, {
+					keyCode : 35,
+					keyDesc : 'End',
+					action : function () {
+						selfDestruct()
+					},
+					comment : 'Self Destruct',
+					noKeyUp : true
+				}, {
+					keyCode : 19,
+					keyDesc : 'Pause',
+					action : function () {
+						alert('Pause')
+					},
+					comment : 'Pause',
+					noKeyUp : true
+				}, {
+					keyCode : 70,
+					keyDesc : 'F',
+					action : function () {
+						toggleFullscreen()
+					},
+					comment : 'Toggle Fullscreen',
+					noKeyUp : true
+				},
+				//{keyCode:27, keyDesc:'Esc', action:null, comment:'Toggle Settings'},
+			];
+
+			var log = function (msg) {
+				if (logbook.childNodes.length > 30)
+					logbook.removeChild(logbook.childNodes[0]);
+				logbook.insertAdjacentHTML('beforeend', '<li>' + msg + '</li>');
+			}
+
+			var addEventListener = function (obj, evt, fnc) {
+				if (obj.addEventListener) { // W3C model
+					obj.addEventListener(evt, fnc, false);
+					return true;
+				} else if (obj.attachEvent) { // Microsoft model
+					return obj.attachEvent('on' + evt, fnc);
+				}
+			}
+
+			addEventListener(selectWorldSize, 'change', function (e) {
+				selectWorldSize.blur();
+				if (selectWorldSize.value === 'cga') {
+					canvas.width = 320;
+					canvas.height = 200;
+				} else if (selectWorldSize.value === 'vga') {
+					canvas.width = 640;
+					canvas.height = 480;
+				} else if (selectWorldSize.value === 'svga') {
+					canvas.width = 800;
+					canvas.height = 600;
+				} else if (selectWorldSize.value === 'xga') {
+					canvas.width = 1024;
+					canvas.height = 768;
+				} else if (selectWorldSize.value === 'sxga') {
+					canvas.width = 1280;
+					canvas.height = 1024;
+				} else if (selectWorldSize.value === 'fhd') {
+					canvas.width = 1920;
+					canvas.height = 1080;
+				}
+				selfDestruct();
+				canvasWidth = parseInt(document.getElementById('canvas').getAttribute('width'));
+				canvasHeight = parseInt(document.getElementById('canvas').getAttribute('height'));
+			});
+
+			addEventListener(selectLevel, 'change', function (e) {
+				selectLevel.blur();
+
+			});
+
+			var audios = [
+				audioTheme,
+				audioLevelStart,
+				audioFlyingEnemy,
+				audioFiring,
+				audioKillEnemy
+			];
+
+			addEventListener(checkSound, 'change', function (e) {
+				checkSound.blur();
+				if (checkSound.checked)
+					audioTheme.play();
+				else {
+					audios.forEach(function (e) {
+						e.pause();
+						e.currentTime = 0;
+					});
+				}
+			});
+
+			var keysPressed = {};
+			addEventListener(document, 'keydown', function (e) {
+				keysPressed[e.keyCode] = true;
+				//debug.textContent = 'KeyCode ' + e.keyCode;
+			});
+			addEventListener(document, 'keyup', function (e) {
+				keysPressed[e.keyCode] = false;
+			});
+			function isKeyDown(key) {
+				return keysPressed[key];
+			}
+
+			var randomProperty = function (obj, keyCallback) {
+				var keys = Object.keys(obj)
+					var key = keys[keys.length * Math.random() << 0];
+				if (keyCallback)
+					keyCallback(key);
+				return obj[key];
+			}
+
+			var handleKeyboard = function () {
+				if (!ship.dead) {
+					keyMap.forEach(function (key) {
+						if (isKeyDown(key.keyCode)) {
+							if (key.noKeyUp)
+								keysPressed[key.keyCode] = false;
+							key.action();
+						}
+					});
+				}
+			}
+
+			setInterval(handleKeyboard, handleKeyBoardInterval);
+
+			var displayShipLifes = function () {
+				lifes.textContent = ship.lifes;
+			}
+
+			addEventListener(join, 'click', function () {
+				join.blur(); // remove focus
+				if (name.value) {
+					ship.bot = true;
+					shipName = name.value;
+					ship = createShip(shipName, 'img/galaga.png');
+					ship.lifes = initialLifes;
+					displayShipLifes();
+				}
+			});
+
+			helpContent.insertAdjacentHTML('afterbegin',
+				'RULES<br><br>Bonus Life every ' + bonusLifePoints + ' points.'
+				 + '<br><br>'
+				 + '<div style="">KEYMAP</div><br><table>'
+				 + keyMap.map(function (elem) {
+					return elem.action ? '<tr><td>' + elem.comment + '</td><td>' + elem.keyDesc + '</td></tr>' : ''
+				}).join(''));
+			addEventListener(helpButton, 'click', function () {
+				pop('popup-container');
+			});
+
+			var canvas = oCanvas.create({
+					canvas : '#canvas',
+					background : '#000'
+				});
+
+			var toggleFullscreen = function () {
+				fullscreen = !fullscreen;
+				document.querySelector('.hide-on-fullscreen').style.display = fullscreen ? 'none' : 'inline-block';
+			}
+
+			addEventListener(checkFullscreen, 'change', function (e) {
+				checkFullscreen.blur();
+				toggleFullscreen();
+			});
+
+			var vector = function (x, y) {
+				var self = {
+					x : x,
+					y : y,
+					length : function () {
+						return Math.sqrt(self.x * self.x + self.y * self.y)
+					},
+					unitVector : function () {
+						var len = self.length();
+						return new vector(self.x / len, self.y / len)
+					},
+					add : function (dx, dy) {
+						return new vector(self.x + dx, self.y + dy)
+					},
+					subtract : function (dx, dy) {
+						return new vector(self.x - dx, self.y - dy)
+					},
+					mul : function (mx, my) {
+						return new vector(self.x * mx, self.y * (my || mx))
+					}
+				};
+				return self;
+			};
+
+			var physobj = function (name, type, tx, ty, lifetime, shape, bounce) {
+				bounce = bounce || false;
+				var self = {
+					id : Idgen.uid(16),
+					name : name,
+					type : type,
+					dead : false,
+					translation : new vector(tx, ty),
+					orientationVector : function () {
+						var angle = shape.rotation - 90;
+						var dx = optiMath.cos(angle);
+						var dy = optiMath.sin(angle);
+						return new vector(dx, dy).unitVector();
+					},
+					lifetime : lifetime,
+					rotate : 0,
+					shape : shape,
+					bounce : bounce
+				};
+				return self;
+			}
+
+			var createFuelParticle = function (engine) {
+				var trans = engine.vessel.translation.unitVector();
+				var fuel = new physobj(null, 'fuel',
+						-trans.x * numberOfAnimationsPerSecond,
+						-trans.y * numberOfAnimationsPerSecond,
+						fuelLifetime(),
+						canvas.display.ellipse({
+							x : engine.vessel.shape.x + 10 * random() << 0,
+							y : engine.vessel.shape.y + 10 * random() << 0,
+							radius_x : fuelRadius,
+							radius_y : fuelRadius,
+							stroke : fuelStroke(),
+							rotation : 0
+						}),
+						false);
+				fuel.shape.add();
+				return fuel;
+			}
+
+			var fireShot = function (vessel) {
+				shieldOff(vessel);
+				var trans = vessel.orientationVector();
+				var relativeStartPosition = trans.mul(40);
+				var shot = new physobj(null, 'shot',
+						trans.x * shotSpeed,
+						trans.y * shotSpeed,
+						shotLifetime,
+						canvas.display.sprite({
+							x : vessel.shape.x + relativeStartPosition.x,
+							y : vessel.shape.y + relativeStartPosition.y,
+							image : 'img/shot.png',
+							generate : true,
+							width : 2,
+							height : 4,
+							rotation : vessel.shape.rotation,
+							frame : 1
+						}), false);
+				shot.owner = vessel;
+				shot.shape.add();
+				objects.push(shot);
+				if (checkSound.checked && isMe(vessel))
+					audioFiring.play();
+				return shot;
+			}
+
+			var placeMine = function (vessel) {
+				var mine = new physobj(null, 'mine', 0, 0,
+						mineIgnitionDelay,
+						canvas.display.sprite({
+							x : vessel.shape.x,
+							y : vessel.shape.y,
+							image : 'img/mine.png',
+							generate : true,
+							width : 24,
+							height : 24,
+							rotation : 0,
+							frame : 1
+						}), false);
+				mine.shape.setOrigin('center', 'center');
+				mine.owner = vessel;
+				mine.shape.add();
+				mine.shape.zIndex = 'back';
+				objects.push(mine);
+				return mine;
+			}
+
+			var throwMine = function (vessel) {
+				var orientation = vessel.orientationVector().mul(.6, .6);
+				var mine = new physobj(null, 'mine',
+						(vessel.translation.x + orientation.x * thrownMineSpeed) * 1.2,
+						(vessel.translation.y + orientation.y * thrownMineSpeed) * 1.2,
+						mineIgnitionDelay,
+						canvas.display.sprite({
+							x : vessel.shape.x,
+							y : vessel.shape.y,
+							image : 'img/mine.png',
+							generate : true,
+							width : 24,
+							height : 24,
+							rotation : 0,
+							frame : 1
+						}), true);
+				mine.owner = vessel;
+				mine.shape.add();
+				mine.shape.zIndex = 'back';
+				objects.push(mine);
+				return mine;
+			}
+
+			var getBots = function () {
+				return objects.where(function (o) {
+					return o.bot
+				});
+			}
+
+			var displayLocked = function (vessel) {
+				var lock = new physobj(null, 'lock',
+						vessel.translation.x,
+						vessel.translation.y,
+						10,
+						canvas.display.rectangle({
+							x : vessel.shape.x,
+							y : vessel.shape.y,
+							width : 70,
+							height : 70,
+							stroke : 'outside 2px rgba(255, 255, 0, 0.5)'
+						}), true);
+				lock.owner = vessel;
+				lock.shape.setOrigin('center', 'center');
+				lock.shape.add();
+				lock.shape.zIndex = 'back';
+				objects.push(lock);
+			}
+
+			var lockPrevious = function () {
+				if (ship.dead)
+					return;
+				var bots = getBots();
+				if (!bots.length)
+					return;
+				if ((!ship.lock) || ship.lock.dead)
+					ship.lock = bots[0];
+				else {
+					if (bots[0].id === ship.lock.id)
+						ship.lock = bots[bots.length - 1];
+					else
+						for (var i = 1; i < bots.length; i++) {
+							if (bots[i].id === ship.lock.id) {
+								ship.lock = bots[i - 1];
+								break;
+							}
+						}
+				}
+				if (ship.lock) {
+					displayLocked(ship.lock);
+					debug.textContent = 'Locked: ' + ship.lock.name;
+				}
+			}
+
+			var lockNext = function () {
+				if (ship.dead)
+					return;
+				var bots = getBots();
+				if (!bots.length)
+					return;
+				if ((!ship.lock) || ship.lock.dead)
+					ship.lock = bots[0];
+				else {
+					if (bots[bots.length - 1].id === ship.lock.id)
+						ship.lock = bots[0];
+					else
+						for (var i = 0; i < bots.length; i++) {
+							if (bots[i].id === ship.lock.id) {
+								ship.lock = bots[i + 1];
+								break;
+							}
+						}
+				}
+				if (ship.lock) {
+					displayLocked(ship.lock);
+					debug.textContent = 'Locked: ' + ship.lock.name;
+				}
+			}
+
+			var lockClosest = function () {
+				if (ship.dead)
+					return;
+				var minBotDistance = null;
+				for (var i = 0; i < objects.length; i++) {
+					if (objects[i].bot) {
+						var distance = new vector(objects[i].shape.x, objects[i].shape.y).subtract(ship.shape.x, ship.shape.y).length();
+						if (minBotDistance == null || distance < minBotDistance) {
+							minBotDistance = distance;
+							ship.lock = objects[i];
+						}
+					}
+				}
+				if (ship.lock) {
+					displayLocked(ship.lock);
+					debug.textContent = 'Locked: ' + ship.lock.name;
+				}
+			}
+
+			var lockNextClosest = function () {
+				// todo
+				debug.textContent = 'lockNextClosest not yet implemented';
+			}
+
+			var fireHeatSeeker = function (vessel) {
+				if (!vessel.lock) {
+					debug.textContent = 'can\'t fire heat seeker, no object locked';
+					return;
+				}
+				var trans = vessel.orientationVector();
+				var relativeStartPosition = trans.mul(40);
+				var heatSeeker = new physobj(null, 'heatSeeker',
+						trans.x * heatSeekerSpeed,
+						trans.y * heatSeekerSpeed,
+						heatSeekerLifetime,
+						canvas.display.sprite({
+							x : vessel.shape.x + relativeStartPosition.x,
+							y : vessel.shape.y + relativeStartPosition.y,
+							image : 'img/heatSeeker.png',
+							generate : true,
+							width : 8,
+							height : 16,
+							rotation : vessel.shape.rotation,
+							frame : 1
+						}), false);
+				heatSeeker.translation = vessel.orientationVector().mul(300);
+				heatSeeker.shape.setOrigin('center', 'center');
+				heatSeeker.target = vessel.lock;
+				heatSeeker.owner = vessel;
+				heatSeeker.shape.add();
+				heatSeeker.shape.zIndex = 'back';
+				objects.push(heatSeeker);
+				return heatSeeker;
+			}
+
+			var shieldOn = function (vessel, permanent) {
+				permanent = permanent || false;
+				if (vessel.shield)
+					return;
+				vessel.shield = new physobj(null, 'shield',
+						vessel.translation.x,
+						vessel.translation.y,
+						0,
+						canvas.display.ellipse({
+							x : vessel.shape.x,
+							y : vessel.shape.y,
+							radius_x : shieldRadius,
+							radius_y : shieldRadius,
+							stroke : shieldStroke,
+							rotation : 0
+						}), true);
+				if (permanent)
+					setInterval(function () {
+						vessel.shield.shape.x = vessel.shape.x;
+						vessel.shield.shape.y = vessel.shape.y;
+					}, 50);
+				else
+					setTimeout(function () {
+						shieldOff(vessel)
+					}, shieldOffTimeout);
+				vessel.shield.shape.add();
+				objects.push(vessel.shield);
+			}
+
+			var shieldOff = function (vessel) {
+				if (!vessel.shield)
+					return;
+				var shield = vessel.shield;
+				vessel.shield = null;
+				shield.shape.remove();
+			}
+
+			var createDebris = function (radius, x, y, tx, ty, stroke) {
+				var debris = new physobj(null, 'fuel',
+						tx, ty,
+						debrisLifetime(),
+						canvas.display.ellipse({
+							x : x,
+							y : y,
+							radius_x : radius,
+							radius_y : radius,
+							stroke : stroke,
+							rotation : 0
+						}));
+				debris.shape.add();
+				return debris;
+			}
+
+			var engine = function (name, thrust, vessel) {
+				var self = {
+					name : name,
+					thrust : thrust,
+					vessel : vessel,
+					boost : function () {
+						var angle = self.vessel.shape.rotation - 90;
+						var dx = optiMath.cos(angle);
+						var dy = optiMath.sin(angle);
+						self.vessel.translation = self.vessel.translation.add(dx * thrust, dy * thrust);
+						for (var i = 0; i < numberOfBoostParticles; i++) {
+							var fp = createFuelParticle(self);
+							objects.push(fp);
+						}
+					}
+				};
+				return self;
+			}
+
+			var createVessel = function (name, image, x, y, rotation, bot) {
+				var vessel = new physobj(name, 'vessel', 0,  - .05, null,
+						canvas.display.sprite({
+							x : x,
+							y : y,
+							image : image,
+							generate : true,
+							width : 44,
+							height : 44,
+							rotation : rotation,
+							frame : 1
+						}), true);
+				vessel.translation = new vector(0, 0);
+				vessel.shape.setOrigin('center', 'center');
+				vessel.engine = new engine('engine 1', engineThrust, vessel);
+				vessel.score = 0;
+				vessel.shape.add();
+				var orientation = vessel.orientationVector();
+				vessel.decoration = canvas.display.text({
+						x : vessel.shape.x,
+						y : vessel.shape.y + 26,
+						origin : {
+							x : 'center',
+							y : 'top'
+						},
+						font : 'bold 13px sans-serif',
+						text : vessel.name,
+						fill : isMe(vessel) ? '#faa' : '#0aa',
+						rotation : 0
+					});
+				vessel.decoration.add();
+				objects.push(vessel);
+				return vessel;
+			}
+
+			var createShip = function (name, image) {
+				var vessel = createVessel(name, image, canvasWidth / 2, canvasHeight - 22, 0, false);
+				vessel.shape.zIndex = 1000;
+				vessel.autopilot = false;
+				vessel.bot = false;
+				vessel.translation = new vector(0, -10);
+				vessel.botBehaviour = randomProperty(botBehaviour, function (which) {
+						vessel.botBehaivourName = which
+					});
+				return vessel;
+			}
+
+			var createBot = function (name, image) {
+				var vessel = createVessel(name, image, random() * canvasWidth, 22, 180, true);
+				vessel.shape.zIndex = 900;
+				vessel.autopilot = false;
+				vessel.bot = true;
+				vessel.translation = new vector(random() * 1000 / numberOfAnimationsPerSecond, random() * 1000 / numberOfAnimationsPerSecond);
+				vessel.botBehaviour = randomProperty(botBehaviour, function (which) {
+						vessel.botBehaivourName = which
+					});
+				return vessel;
+			}
+
+			var selfDestruct = function () {
+				log('<span class="' + vesselColorClass(ship) + '">' + ship.name + '</span> resigned suddenly');
+				ship.dead = true;
+				explode(ship);
+				if (ship.lifes === 1) {
+					addToHighScores(ship);
+					gameOver();
+					if (checkSound.checked)
+						audioTheme.play();
+					ship.score = 0;
+					displayScore();
+					ship.lifes = initialLifes + 1
+						nextLife(ship, gameOverTimeout);
+				} else
+					nextLife(ship, nextLifeTimeout);
+			}
+
+			var gameOver = function () {
+				var go = new physobj(null, 'gameOver', 0, 0, 200,
+						canvas.display.sprite({
+							x : canvasWidth / 2,
+							y : canvasHeight / 2,
+							image : 'img/gameOver.png',
+							generate : true,
+							width : 240,
+							height : 40,
+							rotation : 0,
+							frame : 1
+						}), true);
+				go.bot = false;
+				go.shape.setOrigin('center', 'center');
+				go.shape.add();
+				objects.push(go);
+			}
+
+			var nextLife = function (vessel, timeout) {
+				if (!vessel)
+					alert('nextLife: internal error');
+				var lifesLeft = vessel.lifes - 1;
+				var score = vessel.score;
+				var autopilot = vessel.autopilot;
+				timeout = timeout || 0;
+				setTimeout(function () {
+					vessel = vessel.bot
+						 ? createBot(vessel.name, vessel.shape.image)
+						 : ship = createShip(vessel.name, vessel.shape.image);
+					shieldOn(vessel);
+					vessel.autopilot = autopilot;
+					vessel.lifes = lifesLeft;
+					vessel.score = score;
+					if (isMe(vessel)) {
+						displayShipLifes();
+						if (checkSound.checked)
+							audioLevelStart.play();
+					} else { // bot
+						if (checkSound.checked)
+							audioFlyingEnemy.play();
+					}
+					log('@<span class="vessel">' + vessel.name + ' (' + vessel.botBehaivourName + ')</span>: Welcome!');
+				}, timeout);
+
+			}
+
+			var objects = [];
+			var ship = null;
+
+			var isMe = function (vessel) {
+				return vessel.name === shipName
+			}
+
+			var populate = function () {
+				ship = createShip(shipName, 'img/galaga.png');
+				ship.lifes = initialLifes;
+				displayShipLifes();
+				var count = 0;
+				for (var i = 0; i < numberOfBots; i++) {
+					setTimeout(function () {
+						var index = count++;
+						var botName = 'Bot ' + (index + 1);
+						var bot = createBot(botName, 'img/bot' + ((index % numberOfBotTypes) + 1) + '.png');
+						bot.lifes = initialLifes;
+						log('@<span class="vessel">' + botName + '(' + bot.botBehaivourName + ')</span>: Welcome!');
+					}, i * 7000);
+				}
+			}
+
+			populate();
+
+			var gc = function () {
+				for (var i = objects.length - 1; i >= 0; i--) {
+					var obj = objects[i];
+					if (obj.dead) {
+						objects.splice(i, 1);
+						if (obj.decoration)
+							obj.decoration.remove();
+						obj.shape.remove();
+					}
+				}
+			}
+
+			setInterval(gc, garbageCollectionInterval);
+
+			const rotationStep = 5;
+
+			var addToHighScores = function (vessel) {
+				if (vessel.score === 0)
+					return;
+				for (var i = 0; i < hiscores.length; i++) {
+					if (hiscores[i]) {
+						if (hiscores[i].score < vessel.score) {
+							for (var j = hiscores.length - 1; j > i; j--) {
+								hiscores[j] = hiscores[j - 1];
+							}
+							hiscores[i] = null;
+						}
+					}
+					if (!hiscores[i]) {
+						for (var k = 0; k < hiscores.length; k++) {
+							if (hiscores[k])
+								hiscores[k].hilite = false;
+						}
+						hiscores[i] = {
+							name : vessel.name,
+							bot : !isMe(vessel),
+							score : vessel.score,
+							hilite : true
+						};
+						while (hiscoresTable.firstChild) { // remove child nodes (faster than setting .innerHTML = ''!)
+							hiscoresTable.removeChild(hiscoresTable.firstChild);
+						}
+						var html = hiscores.map(function (elem) {
+								return elem ? '<tr><td class="' + (elem.bot ? 'bot' : 'ship') + '" style="' + (elem.hilite ? 'font-weight:900' : '') + '">' + elem.name + '</td><td>' + elem.score + '</td></tr>' : ''
+							}).join('');
+						hiscoresTable.insertAdjacentHTML('afterbegin', html);
+						return;
+					}
+				}
+			}
+
+			var explode = function (vessel) {
+				for (var i = 0; i < numberOfExplosionDebris; i++) {
+					var angle = random() * 360;
+					var tx = vessel.translation.x + optiMath.cos(angle) * random() * maxDebrisSpeed / numberOfAnimationsPerSecond;
+					var ty = vessel.translation.y + optiMath.sin(angle) * random() * maxDebrisSpeed / numberOfAnimationsPerSecond;
+					var debris = createDebris(debrisRadius(), vessel.shape.x, vessel.shape.y,
+							tx, ty, debrisStroke());
+					objects.push(debris);
+				}
+				if (checkSound.checked)
+					audioKillEnemy.play();
+				log('R.I.P. <span class="' + vesselColorClass(vessel) + '">' + vessel.name + '</span>&dagger; (scored ' + vessel.score + ')');
+			}
+
+			var explodeMine = function (mine) {
+				for (var i = 0; i < numberOfMineShrapnels; i++) {
+					var angle = random() * 360;
+					var tx = optiMath.cos(angle) * random() * maxShrapnelSpeed / numberOfAnimationsPerSecond;
+					var ty = optiMath.sin(angle) * random() * maxShrapnelSpeed / numberOfAnimationsPerSecond;
+					var shrapnel = new physobj(null, 'shrapnel', tx, ty, 40 * random() << 0,
+							canvas.display.ellipse({
+								x : mine.shape.x,
+								y : mine.shape.y,
+								radius_x : shrapnelRadius,
+								radius_y : shrapnelRadius,
+								stroke : shrapnelStroke(),
+								rotation : 0
+							}), false);
+					shrapnel.owner = mine.owner;
+					shrapnel.shape.add();
+					objects.push(shrapnel);
+				}
+			}
+
+			var showBonus = function (x, y, translation) {
+				var bonus = new physobj(null, 'bonus',
+						translation.x, translation.y,
+						bonusDisplayLifetime,
+						canvas.display.sprite({
+							x : x,
+							y : y,
+							image : 'img/bonus.png',
+							generate : true,
+							width : 32,
+							height : 32,
+							rotation : 0,
+							frame : 1
+						}), true);
+				bonus.bot = false;
+				bonus.shape.setOrigin('center', 'center');
+				bonus.shape.add();
+				objects.push(bonus);
+			}
+
+			var displayScore = function () {
+				score.textContent = ship.score;
+			}
+
+			var addScore = function (vessel, points) {
+				vessel.score += points;
+				if (vessel.score % bonusLifePoints == 0) {
+					vessel.lifes++;
+					if (isMe(vessel))
+						displayShipLifes();
+				}
+				if (isMe(vessel))
+					displayScore();
+			}
+
+			var handleWeaponHits = function () {
+				var vessels = [];
+				objects.forEach(function (elem) {
+					if (elem.type === 'vessel') {
+						vessels.push(elem)
+					}
+				});
+				objects.forEach(function (elem, index, array) {
+					if (elem.type != 'shot'
+						 && elem.type != 'shrapnel'
+						 && elem.type != 'heatSeeker')
+						return;
+					var weapon = elem;
+					vessels.forEach(function (vessel) {
+						if (vessel.dead)
+							return;
+						if (vessel.shape.x - 22 <= weapon.shape.x && weapon.shape.x < vessel.shape.x + 22 &&
+							vessel.shape.y - 22 <= weapon.shape.y && weapon.shape.y < vessel.shape.y + 22) {
+							weapon.dead = true;
+							if (!vessel.shield) {
+								vessel.dead = true;
+								log('<span class="' + vesselColorClass(weapon.owner) + '">' + weapon.owner.name + '</span> was not very nice to <span class="' + vesselColorClass(vessel) + '">' + vessel.name + '</span>');
+								explode(vessel);
+								showBonus(vessel.shape.x, vessel.shape.y, vessel.translation.mul(.2, .2));
+								addScore(weapon.owner, 100);
+								if (vessel.lifes === 1) {
+									addToHighScores(vessel);
+									vessel.score = 0;
+									if (isMe(vessel)) {
+										gameOver();
+										if (checkSound.checked)
+											audioTheme.play();
+										displayScore();
+									}
+									vessel.lifes = initialLifes + 1;
+									nextLife(vessel, gameOverTimeout);
+								} else
+									nextLife(vessel, nextLifeTimeout);
+							}
+						}
+					});
+				});
+			}
+
+			setInterval(handleWeaponHits, handleWeaponHitsInterval);
+
+			var handleAutopilot = function (vessel) {
+				shieldOn(vessel);
+				var velocity = vessel.translation.length();
+				if (random() < .1)
+					vessel.engine.boost();
+				if (random() < .06 && velocity > 100)
+					placeMine(vessel);
+				if ((!vessel.target) || vessel.target.dead) {
+					vessel.target = null;
+					var minBotDistance = null;
+					var bots = getBots();
+					bots.forEach(function (bot) {
+						var distance = new vector(bot.shape.x, bot.shape.y).subtract(ship.shape.x, ship.shape.y).length();
+						if (minBotDistance == null || distance < minBotDistance) {
+							minBotDistance = distance;
+							vessel.target = bot;
+						}
+					});
+					if (vessel.target)
+						debug.textContent = 'AutoPilot: OK, let\'s blast ' + vessel.target.name + ' now';
+					else
+						debug.textContent = 'AutoPilot: No bot here?';
+				}
+				if (vessel.target && !vessel.busy) {
+					var aiming = new vector(vessel.target.shape.x, vessel.target.shape.y).subtract(vessel.shape.x, vessel.shape.y);
+					var botDistance = aiming.length();
+					var botVelocity = vessel.target.translation.length();
+					var aimingCorrection = botDistance / 200 + botVelocity / 230;
+					aiming = aiming.add(vessel.target.translation.x * aimingCorrection, vessel.target.translation.y * aimingCorrection);
+					var angle = optiMath.atan(aiming.x, aiming.y) + 90;
+					vessel.busy = true;
+					vessel.shape.animate({
+						rotation : angle
+					}, {
+						duration : 500,
+						easing : 'ease-in-out-cubic',
+						callback : function () {
+							if (botDistance < 10 && botVelocity < .6)
+								throwMine(vessel);
+							else {
+								fireShot(vessel);
+								var delay = 40;
+								var spreadFire = 40;
+								setTimeout(function () {
+									fireShot(vessel);
+									vessel.shape.rotation += random() * spreadFire - spreadFire / 2
+								}, delay += delay);
+								setTimeout(function () {
+									fireShot(vessel);
+									vessel.shape.rotation += random() * spreadFire - spreadFire / 2
+								}, delay += delay);
+								setTimeout(function () {
+									fireShot(vessel);
+									vessel.shape.rotation += random() * spreadFire - spreadFire / 2
+								}, delay += delay);
+								setTimeout(function () {
+									fireShot(vessel);
+									vessel.shape.rotation += random() * spreadFire - spreadFire / 2
+								}, delay += delay);
+							}
+							vessel.busy = false;
+						}
+					});
+				}
+			}
+
+			var animateBots = function () {
+				objects.forEach(function (elem) {
+					if (!(elem.bot || elem.autopilot))
+						return;
+					var vessel = elem;
+					if (vessel.autopilot) {
+						handleAutopilot(vessel);
+					} else {
+						if (random() < .5)
+							vessel.engine.boost();
+						if (random() < vessel.botBehaviour.firingRate)
+							fireShot(vessel);
+						if (random() < .1)
+							shieldOn(vessel);
+						if (random() < .2) {
+							vessel.shape.animate({
+								rotation : vessel.shape.rotation + random() * 360 - 180
+							}, {
+								easing : 'ease-in-out-cubic'
+							});
+						}
+					}
+				});
+			}
+
+			setInterval(animateBots, botAnimationInterval);
+
+			var animateGuidedWeapons = function () {
+				objects.forEach(function (obj) {
+					if (obj.type == 'lock') {
+						obj.shape.x = obj.owner.shape.x;
+						obj.shape.y = obj.owner.shape.y;
+						return;
+					}
+					if (obj.type != 'heatSeeker')
+						return;
+					var heatSeeker = obj;
+					if (heatSeeker.target.dead)
+						return;
+					var aiming = new vector(heatSeeker.target.shape.x, heatSeeker.target.shape.y)
+						.subtract(heatSeeker.shape.x, heatSeeker.shape.y);
+					aiming = aiming.mul(150/aiming.length());
+					var velocity = heatSeeker.translation.length();
+					var newTranslation = heatSeeker.translation.add(aiming.x, aiming.y);
+					newTranslation = newTranslation.mul(velocity / newTranslation.length());
+					heatSeeker.translation = newTranslation;
+					heatSeeker.shape.rotation = optiMath.normalize(optiMath.atan(heatSeeker.translation.x, heatSeeker.translation.y)) + 90;
+				});
+			}
+			
+			var animateGuidedWeaponsInterval = 200;
+			setInterval(animateGuidedWeapons, animateGuidedWeaponsInterval);
+
+			var animate = function () {
+				objects.forEach(function (obj, index, array) {
+					if (obj.dead)
+						return;
+					// handle translations
+					var dx = obj.translation.x / numberOfAnimationsPerSecond;
+					var dy = obj.translation.y / numberOfAnimationsPerSecond;
+					obj.shape.move(dx, dy);
+					if (obj.decoration) {
+						obj.decoration.move(dx, dy);
+					}
+					if (obj.rotate) {
+						obj.shape.rotation = obj.shape.rotation + obj.rotate;
+						obj.rotate = 0;
+					}
+					// handle lifetimes
+					if (obj.lifetime && --obj.lifetime === 0) {
+						obj.dead = true;
+						if (obj.type == 'mine')
+							explodeMine(obj);
+					}
+					// handle world boundaries
+					if (obj.shape.x < 0 || obj.shape.x > canvasWidth) {
+						if (obj.bounce)
+							obj.translation = obj.translation.mul(-1, 1);
+						else if (obj.type != 'heatSeeker')
+							obj.dead = true;
+					}
+					if (obj.shape.y < 0 || obj.shape.y > canvasHeight) {
+						if (obj.bounce)
+							obj.translation = obj.translation.mul(1, -1);
+						else if (obj.type != 'heatSeeker')
+							obj.dead = true;
+					}
+				});
+				canvas.redraw();
+			}
+
+			setInterval(animate, 1000 / numberOfAnimationsPerSecond);
+			if (checkSound.checked)
+				audioTheme.play();
+		})();
+	};
+</script>
+</body>
+</html>
