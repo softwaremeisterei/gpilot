@@ -47,7 +47,7 @@
 					<button id="join">Join</button>
 					<span id="logo">GPilot.JS 0.3.0</span>
 				</div>
-				<canvas id="canvas" width="1024" height="768"></canvas>
+				<canvas id="canvas" width="800" height="600"></canvas>
 				<div class="form">
 					Message	to <select id="users"><option value="">all</option></select>
 					<input type="text" id="message" disabled="disabled"/>
@@ -65,8 +65,8 @@
 								<select id="selectWorldSize">
 									<option value="fhd">FHD</option>
 									<option value="sxga">SXGA</option>
-									<option value="xga" selected>XGA</option>
-									<option value="svga">SVGA</option>
+									<option value="xga">XGA</option>
+									<option value="svga" selected>SVGA</option>
 									<option value="vga">VGA</option>
 									<option value="cga">CGA</option>
 								</select>
@@ -102,7 +102,7 @@
 			</div>
         </section>
 	</div>
-<script src="/js/ocanvas-2.8.3.min.js"></script>
+<script src="/js/ocanvas-2.8.3.js"></script>
 <script src="/js/popup.js"></script>
 <script src="/js/utils.js"></script>
 <script src="/js/optimath.js"></script>
@@ -592,8 +592,8 @@
 							y : vessel.shape.y,
 							image : 'img/mine.png',
 							generate : true,
-							width : 24,
-							height : 24,
+							width : 18,
+							height : 18,
 							rotation : 0,
 							frame : 1
 						}), false);
@@ -616,8 +616,8 @@
 							y : vessel.shape.y,
 							image : 'img/mine.png',
 							generate : true,
-							width : 24,
-							height : 24,
+							width :18,
+							height : 18,
 							rotation : 0,
 							frame : 1
 						}), true);
