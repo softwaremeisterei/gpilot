@@ -2,6 +2,6 @@
 
 ©2016 softwaremeisterei
 
-Download or play it [online](http://gpilot.softwaremeisterei.at/)
+Download (and root a web server to the root folder of your download) or play it [online](http://gpilot.softwaremeisterei.at/)
 
 ![Screenshot](screenshot.png)
