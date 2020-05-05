@@ -1,5 +1,5 @@
-galaga (Namco, 1981) & xpilot (Bjørn Stabell and Ken Schouten, 1991) hybrid
+## GALAGA (Namco, 1981) & XPILOT (Bjørn Stabell and Ken Schouten, 1991) hybrid game experimental written in pure JavaScript
 
-http://gpilot.softwaremeisterei.at/
+Download or play it [online](http://gpilot.softwaremeisterei.at/)
 
 ![Screenshot](screenshot.png)
