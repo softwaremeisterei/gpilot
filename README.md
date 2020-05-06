@@ -2,6 +2,8 @@
 
 ©2016 softwaremeisterei
 
-Download (and root a web server - like [this one](https://sourceforge.net/projects/miniweb/) - to the root folder of your download) or play it [online](http://gpilot.softwaremeisterei.at/)
+Download or play it [online](http://gpilot.softwaremeisterei.at/)
+
+If you download and want to start the game, a *webserver* (try [this](https://sourceforge.net/projects/miniweb/)) needs to be rooted into the root folder of your download.
 
 ![Screenshot](screenshot.png)
